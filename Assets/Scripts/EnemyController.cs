@@ -96,7 +96,7 @@ public class EnemyController : MonoBehaviour
             anim.SetBool("isShooting", true);
             GameObject bullet = Instantiate(bulletPrefab, bulletSpawnPoint.position, bulletPrefab.transform.rotation);
             Rigidbody bulletRb = bullet.GetComponent<Rigidbody>();
-            bulletRb.AddForce(bulletSpawnPoint.up * bulletSpeed, ForceMode.Impulse);
+            bulletRb.AddForce(transform.forward * bulletSpeed, ForceMode.Impulse);
            
             alreadyAttacked = true;
             Invoke(nameof(ResetAttack), timeBetweenAttacks);

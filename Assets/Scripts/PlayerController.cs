@@ -8,51 +8,54 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float playerSpeed = 2.0f;
     [SerializeField] private float gravityValue = -9.81f;
     [SerializeField] private float turnSpeed = 0.5f;
-
+    [SerializeField] private Vector3 move;
+    private Camera mainCamera;
     private CharacterController controller;
     private Animator anim;
     private Vector3 playerVelocity;
-
+    private Rigidbody rb;
     [Header("Shooting")]
     [SerializeField] private GameObject bulletPrefab;
     [SerializeField] private Transform bulletSpawnPoint;
     [SerializeField] private float bulletSpeed;
     [SerializeField] private float fireTime;
+    private Vector3 position;
+
 
     private void Start()
     {
-        //poner en un initialize
+        rb = this.GetComponent<Rigidbody>();
         controller = gameObject.GetComponent<CharacterController>();
         anim = gameObject.GetComponentInChildren<Animator>();
+        mainCamera = Camera.main;
 
-        //game manager con un check
-        Cursor.visible = false;
-        Cursor.lockState = CursorLockMode.Locked;
+        //Cursor.visible = false;
+        //Cursor.lockState = CursorLockMode.Locked;
     }
 
     void Update()
     {
-        Move();
         PlayerShooting();
+        Movement();
+
     }
 
-    public void Move()
+
+    private void Movement()
     {
-        Vector3 move = new Vector3(Input.GetAxis("Horizontal"), 0, Input.GetAxis("Vertical"));
-        controller.Move(move * Time.deltaTime * playerSpeed);
+        //Character movement
+        move = new Vector3(-Input.GetAxis("Vertical"), 0, Input.GetAxis("Horizontal"));
+        anim.SetFloat("horizontal", Input.GetAxis("Horizontal"));
+        anim.SetFloat("vertical", Input.GetAxis("Vertical"));
+        transform.Translate(move * Time.deltaTime * playerSpeed, Space.World);
 
-        if (move != Vector3.zero)
-        {
-            gameObject.transform.forward = move;
-            anim.SetFloat("horizontal", Input.GetAxis("Horizontal"));
-            anim.SetFloat("vertical", Input.GetAxis("Vertical"));
-        }
-
-        playerVelocity.y += gravityValue * Time.deltaTime;
-        controller.Move(playerVelocity * Time.deltaTime);
-
-        float mouseRotation = Input.GetAxis("Mouse X") * turnSpeed;
-        transform.eulerAngles = new Vector3(0, transform.eulerAngles.y + mouseRotation, 0);
+        //Character rotation
+        var ray = mainCamera.ScreenPointToRay(Input.mousePosition);
+        Physics.Raycast(ray, out var hitInfo, Mathf.Infinity);
+        var pos = hitInfo.point;
+        var direction = pos - transform.position;
+        direction.y = 0;
+        transform.forward = direction;
     }
 
     public void PlayerShooting()
@@ -70,8 +73,8 @@ public class PlayerController : MonoBehaviour
     private void Shoot()
     {
         GameObject bullet = Instantiate(bulletPrefab, bulletSpawnPoint.position, bulletSpawnPoint.rotation);
-        Rigidbody bulletRb = bullet.GetComponent<Rigidbody>();
-        bulletRb.AddForce(bulletSpawnPoint.up * bulletSpeed, ForceMode.Impulse);
+        Rigidbody bulletRb = bullet.GetComponent<Rigidbody>();  
+        bulletRb.AddForce(transform.forward * bulletSpeed, ForceMode.Impulse);
     }
 
 }
