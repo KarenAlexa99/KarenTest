@@ -1,5 +1,3 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
 
@@ -16,24 +14,43 @@ public class EnemyController : MonoBehaviour
     [SerializeField] private GameObject bulletPrefab;
     [SerializeField] private Transform bulletSpawnPoint;
     [SerializeField] private float bulletSpeed;
-    private bool alreadyAttacked;
     private Animator anim;
 
     [Header("States")]
     [SerializeField] private float sightRange;
     [SerializeField] private float attackRange;
+    [SerializeField] private float maxLife;
+    private float life;
     private bool playerInSightRange, playerInAttackRange;
+    private bool enemyIsDie;
+
+    [Header("VFX")]
+    [SerializeField] private ParticleSystem shootPs;
+    [SerializeField] private ParticleSystem bloodPs;
+
+    [Header("SoundFX")]
+    [SerializeField] private AudioClip shootClip;
+    [SerializeField] private AudioClip damageClip;
+
+    public bool alreadyAttacked { get; set; }
 
     private void Awake()
     {
         player = GameObject.Find("Player").transform;
         agent = GetComponent<NavMeshAgent>();
         anim = GetComponentInChildren<Animator>();
+        life = maxLife;
+        enemyIsDie = false;
     }
 
-    private void Update()
+    /// <summary>
+    /// Initialized the enemys states
+    /// </summary>
+
+    public void Initialized()
     {
-        CheckEnemyStates();
+        if (!enemyIsDie)
+            CheckEnemyStates();
     }
 
     public void CheckEnemyStates()
@@ -49,11 +66,15 @@ public class EnemyController : MonoBehaviour
             AttackPlayer();
     }
 
+    /// <summary>
+    /// random points for movement
+    /// </summary>
+
     private bool RandomPoint(Vector3 center, float range, out Vector3 result)
     {
         for (int i = 0; i < 30; i++)
         {
-            Vector3 randomPoint = center + Random.insideUnitSphere * range;
+            Vector3 randomPoint = center + UnityEngine.Random.insideUnitSphere * range;
             NavMeshHit hit;
             if (NavMesh.SamplePosition(randomPoint, out hit, 2.0f, NavMesh.AllAreas))
             {
@@ -94,10 +115,12 @@ public class EnemyController : MonoBehaviour
         if (!alreadyAttacked)
         {
             anim.SetBool("isShooting", true);
-            GameObject bullet = Instantiate(bulletPrefab, bulletSpawnPoint.position, bulletPrefab.transform.rotation);
+            shootPs.Play();
+            SoundManager.Instance.PlaySound(shootClip, 0.2f);
+            GameObject bullet = Instantiate(bulletPrefab, bulletSpawnPoint.position, bulletSpawnPoint.rotation);
             Rigidbody bulletRb = bullet.GetComponent<Rigidbody>();
             bulletRb.AddForce(transform.forward * bulletSpeed, ForceMode.Impulse);
-           
+
             alreadyAttacked = true;
             Invoke(nameof(ResetAttack), timeBetweenAttacks);
         }
@@ -109,6 +132,27 @@ public class EnemyController : MonoBehaviour
         alreadyAttacked = false;
     }
 
+    private void OnTriggerEnter(Collider other)
+    {
+        if (other.gameObject.layer == 6)
+        {
+            TakeDamage(other.GetComponent<BulletController>().Damage);
+        }
+    }
+
+    public void TakeDamage(float damage)
+    {
+        life -= damage;
+        bloodPs.Play();
+        SoundManager.Instance.PlaySound(damageClip,0.08f);
+
+        if (life <= 0)
+        {
+            enemyIsDie = true;
+            Destroy(gameObject, 0.5f);
+        }
+    }
+
     private void OnDrawGizmosSelected()
     {
         Gizmos.color = Color.red;
@@ -116,5 +160,4 @@ public class EnemyController : MonoBehaviour
         Gizmos.color = Color.yellow;
         Gizmos.DrawWireSphere(transform.position, sightRange);
     }
-
 }

@@ -1,45 +1,51 @@
-using System.Collections;
-using System.Collections.Generic;
+using System;
 using UnityEngine;
 
 public class PlayerController : MonoBehaviour
 {
+    public Action OnTakeDamage;
+    public Action OnGameOver;
+
     [Header("Movement")]
     [SerializeField] private float playerSpeed = 2.0f;
-    [SerializeField] private float gravityValue = -9.81f;
-    [SerializeField] private float turnSpeed = 0.5f;
-    [SerializeField] private Vector3 move;
+    private Vector3 move;
     private Camera mainCamera;
-    private CharacterController controller;
     private Animator anim;
-    private Vector3 playerVelocity;
-    private Rigidbody rb;
+
     [Header("Shooting")]
     [SerializeField] private GameObject bulletPrefab;
     [SerializeField] private Transform bulletSpawnPoint;
     [SerializeField] private float bulletSpeed;
-    [SerializeField] private float fireTime;
-    private Vector3 position;
 
+    [Header("Health")]
+    [SerializeField] private float maxHealth = 100;
 
-    private void Start()
+    [Header("VFX")]
+    [SerializeField] private ParticleSystem shootPs;
+    [SerializeField] private ParticleSystem Blood;
+
+    [Header("SoundFX")]
+    [SerializeField] private AudioClip shootClip;
+    [SerializeField] private AudioClip walkClip;
+    public float curHealth { get; set; }
+    public float maxiHealth { get; set; }
+
+    private void Awake()
     {
-        rb = this.GetComponent<Rigidbody>();
-        controller = gameObject.GetComponent<CharacterController>();
         anim = gameObject.GetComponentInChildren<Animator>();
         mainCamera = Camera.main;
-
-        //Cursor.visible = false;
-        //Cursor.lockState = CursorLockMode.Locked;
+        maxiHealth = maxHealth;
+        curHealth = maxHealth;
     }
 
-    void Update()
+    /// <summary>
+    /// Shooting and movement is initialized for the game manager
+    /// </summary>
+    public void Initialized()
     {
         PlayerShooting();
         Movement();
-
     }
-
 
     private void Movement()
     {
@@ -70,11 +76,45 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Is use for animation events
+    /// </summary>
     private void Shoot()
     {
+        shootPs.Play();
+        SoundManager.Instance.PlaySound(shootClip, 0.3f);
         GameObject bullet = Instantiate(bulletPrefab, bulletSpawnPoint.position, bulletSpawnPoint.rotation);
-        Rigidbody bulletRb = bullet.GetComponent<Rigidbody>();  
+        Rigidbody bulletRb = bullet.GetComponent<Rigidbody>();
         bulletRb.AddForce(transform.forward * bulletSpeed, ForceMode.Impulse);
     }
 
+    /// <summary>
+    /// Is use for animation events
+    /// </summary>
+    private void SetWalkSound()
+    {
+        SoundManager.Instance.PlaySound(walkClip, 0.05f);
+    }
+
+    /// <summary>
+    /// Damage that received 
+    /// </summary>
+
+    private void OnTriggerEnter(Collider other)
+    {
+        if (other.gameObject.layer == 7)
+        {
+            curHealth -= other.GetComponent<BulletController>().Damage;
+            Blood.Play();
+
+            if (curHealth <= 0)
+            {
+                if (OnGameOver != null)
+                    OnGameOver?.Invoke();
+            }
+
+            if (OnTakeDamage != null)
+                OnTakeDamage?.Invoke();
+        }
+    }
 }
